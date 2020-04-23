@@ -1,0 +1,47 @@
+-- Use trigger function to find out who updates the row and when 
+
+DROP TABLE dbo.TestData;
+CREATE TABLE dbo.TestData (
+	Id int IDENTITY CONSTRAINT PK_Id PRIMARY KEY,
+	ColA int,
+	ColB int,
+	ColC int,
+	LastModifiedDate datetime2,
+	LastModifiedUser nvarchar(30)
+);
+GO
+
+CREATE TRIGGER AutoLogger ON dbo.TestData
+AFTER INSERT,UPDATE
+AS
+BEGIN
+SET NOCOUNT ON;
+
+DECLARE 
+	@CurrentDateTime datetime2 = SYSUTCDATETIME(),
+	@CurrentUser nchar(30) = SYSTEM_USER
+
+UPDATE t
+SET
+       LastModifiedDate = @CurrentDateTime,
+	   LastModifiedUser = @CurrentUser
+FROM
+    dbo.TestData t
+    INNER JOIN inserted i
+        ON t.Id = i.Id;
+END
+GO
+
+-- 
+
+-- Regular insert
+INSERT INTO dbo.TestData (ColA,ColB,ColC) VALUES (1,2,3);
+-- Regular update
+UPDATE dbo.Test SET ColA = 4 WHERE Id = 1;
+SELECT * FROM dbo.TestData;
+
+-- Questionable motive insert
+INSERT INTO dbo.TestData (ColA,ColB,ColC,LastModifiedDate,LastModifiedUser) VALUES (1,2,3,'9999-12-31','NotMe');
+-- Questionable motive update
+UPDATE dbo.TestData SET LastModifiedDate = '9999-12-31', LastModifiedUser='NotMe' WHERE Id = 1;
+SELECT * FROM dbo.TestData;
